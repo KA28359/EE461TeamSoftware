@@ -77,20 +77,20 @@ def project_table(userid):
         projects=dbModel.objects(user_id=userid).order_by(dbModel.date_created).all()
         return render_template('test_project.html',projects=projects)           #give the infomations to the .html with all user's own projects in an order
 
-@app.route('./<userid>/project/delete/')                                        #an delete link after each row, will send them to this link with the information of project_id
+@app.route('/<userid>/project/delete/')                                         #an delete link after each row, will send them to this link with the information of project_id
 def delete_pro(id):
     pro_delete=dbModel.objects(project_id=id).get_or_404                        #search for the project user want to delete
 
     try:
         db.session.delte(pro_delete)
         db.session.commit()
-        return redirect('./<userid>/project')                                   #deleted. send user back to project page
+        return redirect('/<userid>/project')                                    #deleted. send user back to project page
     except:
         return 'error in deleting'
 
-@app.route('/project/<int:project_ID>')                                         #enter a project with a specific project id
+@app.route('<userid>/project/<int:projectID>')                                 #enter a project with a specific project id
 def enter_pro(project_ID):
-    return ()
+    return render_template('dashboard.html', projectID=projectID)
 
 
 if __name__=="__main__":
