@@ -1,0 +1,137 @@
+###########################################################################################################################
+#here's something I tried about the flask, mostly requesting data between html and database, 
+#I'm still trying on some debugging, but I think I put some thoughts here, so we can talk about see if I'm doing this right
+#I also put the very short html code at the end, in case you wanna see it
+###########################################################################################################################
+
+from flask import Flask,render_template,request,redirect;
+from flask_mongoengine import MongoEngine;
+import mongoengine as db;
+from datetime import datetime;
+import mymongo_password from './const.py'
+import encrypt from  './otherMethods.py'
+
+                                                            #connect to the database, I separate the password and database name
+database_name="gettingStarted"
+mongo_password=mymongo_password
+
+app=Flask(__name__)
+db_url="mongodb+srv://yx_wang:{}@cluster0.u0k5p.mongodb.net/{}?retryWrites=true&w=majority".format(mongo_password,database_name)
+db.connect(host=db_url)
+
+                                                            #here, "user" and "dbModel" will be the names of Collctions, its instance will be each documents.
+class users (db.Document):
+    user_encryptid=db.StringField(required=True)
+    user_encryptpass=db.StringField(nullable=False)
+
+class dbModel (db.Document):
+    user_id=db.StringField(reqired=True)
+    project_name=db.StringField(required=True)
+    discreiption=db.StringField()
+    project_id=db.IntField(nullable=False)
+    date_created=db.DateField(default=datetime.utcnow)
+
+                                                            #I didn't do so much about the homepage, the render method will just connect to the .html ducument to show whatever is writen there
+@app.route('/')
+def home_page():
+    return render_template('test_home.html')
+
+                                                                                #this is when user entered their name and password and click on login link, 
+                                                                                #it will be sent to'./login', where we compared their input with all database.
+                                                                                #It's similar to what I did about the projectlist, so I haven't finished yet, just put some thoughts here
+@app.route('/login', methods=['POST','GET'])
+def user_login():
+    error=None
+    if request.method=='POST':
+        name=request.form['login-name']
+        password=request.form['login-password']                                 #get the input from the .html, where the "id=" be set as 'login-name' and 'login-password'
+        encry_name=encrypt(name)                                                #I assumed we only store encrypted-name and encrypted-password on our database, so it's transfered before compare, 
+        search=users.objects(user_encryptid=encry_name).get_or_404
+        if search.user_encryptpass=encrypt(password):
+            return render_template('test_project.html',name=encry_name)         #if the login is successful, we reder to the project page with a unique url
+        else:
+            return redirect('/', error="invalid password")                      #if the login is unsuccessful, we send them back to the homepage, with a response
+    else:
+        return redirect('/', error="unknown error")
+
+                                                                                #this is the page that show the project list after a user logged in,
+                                                                                #it will have the functions of 1,showing the projects 2,create new pro, 3,delete a pro, 4,enter a pro
+@app.route('/<userid>/project', methods=['POST','GET'])
+def project_table(userid):
+    if request.method=='POST':                                                  #Note: the "method="POST" shall be written in the frontend code
+        pname=request.form['p-name']
+        pdescription=request.form['p-description']
+        pid=request.form['p-id']                                                #request the input of the project user want to create
+        
+        new_pro = dbModel(project_name=pname,decription=pdescription,project_ID=pid)
+                                                                                #create an instance of "dbMondel", which will be a new document in database
+        try:
+            new_pro.save()                                                      #save the document
+            db.session.add(new_pro)
+            db.session.commit()
+            return redirect('/<userid>/project')                                #if no error, send user back to project page
+        except:
+            return 'Error with your input'
+        
+    else:
+        projects=dbModel.objects(user_id=userid).order_by(dbModel.date_created).all()
+        return render_template('test_project.html',projects=projects)           #give the infomations to the .html with all user's own projects in an order
+
+@app.route('./<userid>/project/delete/')                                        #an delete link after each row, will send them to this link with the information of project_id
+def delete_pro(id):
+    pro_delete=dbModel.objects(project_id=id).get_or_404                        #search for the project user want to delete
+
+    try:
+        db.session.delte(pro_delete)
+        db.session.commit()
+        return redirect('./<userid>/project')                                   #deleted. send user back to project page
+    except:
+        return 'error in deleting'
+
+@app.route('/project/<int:project_ID>')                                         #enter a project with a specific project id
+def enter_pro(project_ID):
+    return ()
+
+
+if __name__=="__main__":
+    app.run(debug=True)
+    
+    
+    
+ ###############################################################################The short .html code I use for the project page for testing
+ <div class="content">
+    <h1>Hardwares</h1>
+    <table>
+        <tr>
+            <th>Project name</th>
+            <th>Discription</th>
+            <th>ProjectID</th>
+            <th>Date created</th>
+            <th>Action</th>
+        </tr>
+        {% for project in projects %}
+            <tr>
+                <td>{{project.project_name}}</td>
+                <td>{{project.discription}}</td>
+                <td>{{project.project_ID}}</td>
+                <td>{{project.date_created.date()}}</td>
+                <td>
+                    <a href="/delete/{{project.project_ID}}">Delete</a>
+                    <a href="/delete/{{project.project_ID}}">Enter</a>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+    <form action="/" method="POST">
+        <input type="text" name="Project name" id="p-name">
+        <input type="text" name="Discription" id="p-discription">
+        <input type="text" name="ProjectID" id="p-id">
+        <input type="submit" value="add project">
+    </form>
+</div>
+ 
+ 
+ 
+ 
+ 
+ 
