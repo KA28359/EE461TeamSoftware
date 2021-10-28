@@ -1,0 +1,42 @@
+{% extends 'test.html' %}
+{% block head %}
+
+{% endblock %}
+{% block body %}
+    <div  class="content">
+        <h1>Welcome! Log in please</h1>
+        <div>
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <ul class=flashes>
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% endwith %}
+        </div>
+            <form action="/login/" class="login" method="post">
+                <label for="login-username">Username:</label><br>
+                <input type="text" name="username" id="login-name"><br>
+                <label for="login-password">Password:</label><br>
+                <input type="password" name="password" id="login-password"><br>
+                <input type="submit" value="log in">
+            </form>
+            <br>
+            <form action="/signup/" class="signup" method="post">
+                <label for="sign-username">Username:</label><br>
+                <input type="text" name="newUsername" id="sign-name"><br>
+                <label for="sign-password">Password:</label><br>
+                <input type="password" name="newPassword" id="sign-password"><br>
+                <label for="check-password">Reenter password:</label><br>
+                <input type="password" name="checkPassword" id="check-password"><br>
+                <input type="submit" value="sign up">
+            </form>
+        {% if error %}
+            <p class=error><strong>Error:</strong> {{ error }} </p>
+        {% endif %}
+        
+        
+        </div>
+{% endblock %}

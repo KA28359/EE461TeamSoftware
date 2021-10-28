@@ -1,0 +1,47 @@
+{% extends 'test.html' %}
+{% block head %}
+<style>
+    table, th, td {border: 1px solid black; border-collapse: collapse; 
+    background-color:rgb(186, 203, 211);  }
+    table{width:80%; position:relative; left:8rem}
+</style>
+{% endblock %}
+{% block body %}
+<div class="content">
+    <h1>My Projects</h1>
+    <table>
+        <tr>
+            <th>Project name</th>
+            <th>Description</th>
+            <th>ProjectID</th>
+            <th>Date created</th>
+            <th>Action</th>
+        </tr>
+        {% for project in projects %}
+            <tr>
+                <td>{{project.project_name}}</td>
+                <td>{{project.description}}</td>
+                <td>{{project.project_id}}</td>
+                <td >{{project.date_created}}</td>
+                <td>
+                    <a href="/{{project.user_id}}/delete/{{project.project_id}}">Delete</a>
+                    <a href="/{{project.user_id}}/project/{{project.project_id}}">Enter</a>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <form method="post">
+        <label for="p-name">Project name:</label><br>
+        <input type="text" name="ProjectName" id="p-name"><br>
+        <label for="p-description">Description:</label><br>
+        <input type="text" name="Description" id="p-description"><br>
+        <label for="p-id">ProjectID:</label><br>
+        <input type="text" name="ProjectID" id="p-id"><br>
+        <input type="submit" value="add project">
+    </form>
+    {% if error %}
+    <p class=error><strong>Error:</strong> {{ error }} </p>
+    {% endif %}
+</div>
+{% endblock %}
