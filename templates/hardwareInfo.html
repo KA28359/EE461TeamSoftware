@@ -1,10 +1,96 @@
 {% extends 'test.html' %}
 {% block head %}
+<style>
+    table,
+    th,
+    td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        background-color: rgb(186, 203, 211);
+    }
 
+    table {
+        width: 80%;
+        position: relative;
+        left: 8rem
+    }
+</style>
 {% endblock %}
 {% block body %}
 <div>
-    <h1>Hardware Information</h1>
+    <h1>Hardware Information:</h1>
+    <div>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul class=flashes style="color: red;">
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+    </div>
     <p>Current Project: ID({{project_ID}})</p>
+    <div><p>Add another user to this project:</p>
+    <form method="post">
+        <label for="add-user">user name:</label>
+        <input type="text" name="add-user" id="add-user">
+        <!-- <input type="hidden" id="add-proID" name="add-proID" value={{project_ID}}> -->
+        <input type="submit" value="add user">
+    </form></div>
+    <div class="HWinformation">
+        <br>
+        <table class="HW-table">
+            <tr>
+                <th>Hardware</th>
+                <th>Capacity</th>
+                <th>Available</th>
+                <th>Request</th>
+            </tr>
+            {% for information in hw_informations %}
+            <tr>
+                <td>{{information.hw_name}}</td>
+                <td>{{information.hw_capacity}}</td>
+                <td>{{information.hw_availability}}</td>
+                <td>
+                    <form method="post">
+                        <input type="text" name="request" id="request">
+                        <input type="hidden" id="HW-requested" name="HW-requested" value={{information.hw_name}}>
+                        <input type="submit" value="check out">
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        <br><br>
+        <table class="history-table">
+            <tr>
+                <th>Hardware</th>
+                <th>Checkout amount</th>
+                <th>Checkout date</th>
+                <th>Remain</th>
+                <th></th>
+            </tr>
+            {% for history in histories %}
+            <tr>
+                <td>{{history.hwName}}</td>
+                <td>{{history.hwAmount}}</td>
+                <td>{{history.checkoutDate}}</td>
+                <td>{{history.hwRemain}}</td>
+                <td>
+                    <form method="post">
+                        <input type="text" name="checkin" id="checkin">
+                        <input type="hidden" id="checkin-name" name="checkin-name" value={{history.hwName}}>
+                        <input type="hidden" id="history_id" name="history_id" value={{history.history_id}}>
+                        <input type="submit" value="check in">
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        <br>
+        {% if error %}
+        <p class=error><strong>Message:</strong> {{ error }} </p>
+        {% endif %}
 </div>
 {% endblock %}
