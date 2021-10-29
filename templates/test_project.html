@@ -9,6 +9,17 @@
 {% block body %}
 <div class="content">
     <h1>My Projects</h1>
+    <div>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul class=flashes style="color: red;">
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+    </div>
     <table>
         <tr>
             <th>Project name</th>
@@ -22,13 +33,27 @@
                 <td>{{project.project_name}}</td>
                 <td>{{project.description}}</td>
                 <td>{{project.project_id}}</td>
-                <td >{{project.date_created}}</td>
+                <td>{{project.date_created}}</td>
                 <td>
                     <a href="/{{project.user_id}}/delete/{{project.project_id}}">Delete</a>
                     <a href="/{{project.user_id}}/project/{{project.project_id}}">Enter</a>
                 </td>
             </tr>
         {% endfor %}
+        {% if projects_acc %}
+        {% for project in projects_acc %}
+            <tr>
+                <td>{{project.project_name}}</td>
+                <td>{{project.description}}</td>
+                <td>{{project.project_id}}</td>
+                <td>{{project.date_created}}</td>
+                <td>
+                    <a href="/{{project.user_id}}/delete/{{project.project_id}}">Delete</a>
+                    <a href="/{{project.user_id}}/project/{{project.project_id}}">Enter</a>
+                </td>
+            </tr>
+        {% endfor %}
+        {% endif %}
     </table>
     <br>
     <form method="post">
