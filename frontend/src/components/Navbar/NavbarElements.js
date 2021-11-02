@@ -30,8 +30,12 @@ cursor: pointer;
 export const CenterForm = styled.div`
 display: flex;
 justify-content: center;
+`;
 
-
+export const CenterSpace = styled.div`
+display: flex;
+justify-content: center;
+margin-top: 30px;
 `;
   
 //menu that contains all of the options in the nav bar

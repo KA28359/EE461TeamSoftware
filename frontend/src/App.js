@@ -12,11 +12,12 @@ import StorageIcon from '@material-ui/icons/Storage';
 import { IconButton } from '@mui/material';
 import {Link} from 'react-router-dom';
 import './App.css';
+import { CircularProgress } from '@mui/material';
 import {
   LogBtn,
   CenterForm,
+  CenterSpace
 } from './components/Navbar/NavbarElements';
-
 import {
   BrowserRouter as Router,
   Switch,
@@ -31,7 +32,7 @@ import {
 export default function App() {
   return (
     <Router>
-      <Navbar />
+      {/* <Navbar /> */}
       <div>
         <Switch>
           <Route path="/signin"> 
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/signup">
             <SignUp />
           </Route>
+          <Route path="/project/:userID"  component={Project} />
           <Route path="/">
             <Home />
           </Route>
@@ -48,6 +50,63 @@ export default function App() {
     </Router>
   );
 }
+
+class Project extends React.Component{
+
+  constructor(props){
+    super(props);
+    this.state = {
+      counter:0,
+      disbaled: false,
+      data:null
+    };
+  }
+
+  getData(){
+    this.setState({disbaled:true});
+    fetch("http://127.0.0.1:5000/api/data",{method:'post', headers:{"Content-Type": "application/json"}})
+    .then(response => response.json())
+    .then(data => {
+      this.setState({data:data}); 
+      console.log(data); 
+      this.setState({disbaled:false});
+    });
+    
+  }
+
+  // const getRows = () => {
+  //   return data.map((entry) => <tr><td>{entry[0]}</td><td>{entry[1]}</td></tr>);
+
+  // }
+  getRows(){
+    return this.state.data.map((entry) => <tr key={this.state.counter++}><td>{entry[0]}</td><td>{entry[1]}</td><td><a href={entry[2]}>Click here to download zip</a></td></tr>);
+  }
+  render(){
+  return (
+    <div>
+      <CenterForm>
+       <h1>Hello: {this.props.match.params.userID.toString()}</h1>
+      </CenterForm>
+      <CenterForm>
+      <LogBtn style={{backgroundColor:this.state.disbaled?"#808080":"#CC5500"}} disabled={this.state.disbaled} onClick={(event) => this.getData()} type = "submit">Get data</LogBtn>
+      </CenterForm>
+      <CenterSpace>
+      {this.state.disbaled?<CircularProgress />:null}
+      </CenterSpace>
+      <CenterSpace>
+      <table>
+      <tbody>
+      {this.state.data == null ? null:<tr><th>Name</th><th>Description</th><th>Download</th></tr>}
+      {this.state.data == null ? null:this.getRows()}
+      </tbody>
+      </table>
+      </CenterSpace>
+    </div>
+  
+    );
+  }
+}
+
 
 function Home() {
 
@@ -107,6 +166,7 @@ const updateVal = (input) => {
 //the <centerForm> is a styled component using template literals to center all the conent
   return (
     <div>
+      <Navbar />
       <CenterForm>
         {icons[imgNum]}
       </CenterForm>
@@ -204,7 +264,7 @@ class SignUp extends React.Component{
 
     return (
       <div>
-        
+        <Navbar />
         
         <CenterForm>
           <h2>Sign Up</h2>
@@ -273,7 +333,7 @@ function SignIn() {
 
   return (
     <div>
-    
+    <Navbar />
       <CenterForm>
         <h2>Welcome!</h2>
       </CenterForm>

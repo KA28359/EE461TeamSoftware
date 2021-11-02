@@ -44,6 +44,27 @@
   margin-bottom: 200px;
 }
 
+.buffer{
+  margin-top: 150px;
+}
+
 .bigger_text{
   font-size: large;
+}
+
+
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 75%;
+}
+
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
 }
