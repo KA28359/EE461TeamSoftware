@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, request, flash, session, url_for
+from flask import Flask, render_template, redirect, request, flash, session, url_for, jsonify
 import flask_cors
 from flask.helpers import url_for
 from flask_mongoengine import MongoEngine
@@ -12,6 +12,8 @@ import ssl
 import os
 from markupsafe import escape
 from methods import encrypt
+from bs4 import BeautifulSoup
+import requests
 
 cors = flask_cors.CORS()
  
@@ -119,6 +121,45 @@ def sign_up():
 
     return {'auth': error}
 
+
+@app.route('/api/data',methods = ['GET','POST']) 
+
+def get_data():
+    if request.method == 'POST':
+        source = requests.get('https://physionet.org/about/database/').text
+        soup = BeautifulSoup(source, 'lxml')
+        ul =soup.find('h2',{"id":"open"}).find_next_sibling('ul')
+        lis = []
+        data = []
+        links = []
+        counter = 0
+        for li in ul.findAll('li'):
+            entry = []
+            lis.append(li)
+            entry.append(li.find('a').text)
+            links.append('https://physionet.org/'+(li.find('a').get('href')))
+            li.a.decompose()
+            t = li.text.split()
+            t.remove(t[0])
+            desc = " ".join(t) #gets description
+            entry.append(desc)
+            data.append(entry)
+        for l in links:
+            source = requests.get(l).text
+            soup = BeautifulSoup(source, 'lxml')
+            zipFile = soup.find("a",string = "Download the ZIP file")
+            if(zipFile != None):
+                data[counter].append('https://physionet.org/'+zipFile['href'])
+            else:
+                data[counter] = []
+            counter = counter + 1
+        dataList = [x for x in data if x != []]
+            
+
+        #print(links)
+        return jsonify(dataList)
+
+    return {'val':""}
 
 if __name__ == '__main__':
  
