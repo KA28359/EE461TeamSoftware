@@ -16,7 +16,9 @@ import { CircularProgress } from '@mui/material';
 import {
   LogBtn,
   CenterForm,
-  CenterSpace
+  CenterSpace,
+  Nav,
+  NavMenu
 } from './components/Navbar/NavbarElements';
 import {
   BrowserRouter as Router,
@@ -41,7 +43,7 @@ export default function App() {
           <Route path="/signup">
             <SignUp />
           </Route>
-          <Route path="/project/:userID"  component={Project} />
+          <Route path="/project/:userID"  component={Project}  />
           <Route path="/">
             <Home />
           </Route>
@@ -51,59 +53,111 @@ export default function App() {
   );
 }
 
-class Project extends React.Component{
 
+class Project extends React.Component{
+  _isMounted = false;
   constructor(props){
     super(props);
     this.state = {
       counter:0,
       disbaled: false,
-      data:null
+      data:[],
+      authorized:true,
+      spinner:false,
+      index:0,
+      tested:false
     };
   }
 
   getData(){
     this.setState({disbaled:true});
-    fetch("http://127.0.0.1:5000/api/data",{method:'post', headers:{"Content-Type": "application/json"}})
+    this.setState({spinner:true});
+    let info = {'currentEntry':this.state.index};
+    fetch("http://127.0.0.1:5000/api/data",{method:'post', headers:{"Content-Type": "application/json"},body:JSON.stringify(info)})
     .then(response => response.json())
     .then(data => {
-      this.setState({data:data}); 
-      console.log(data); 
-      this.setState({disbaled:false});
+      // this.setState({data:data}); 
+      for(var i = 0; i < data.length; i++){
+        this.setState({ data: [...this.state.data, data[i]] })
+        this.setState({index:this.state.index+1})
+      }
+      if(data.length === 0){
+        this.setState({disbaled:true});
+      }else{
+        this.setState({disbaled:false});
+      }
+      this.setState({spinner:false});
     });
     
   }
 
-  // const getRows = () => {
-  //   return data.map((entry) => <tr><td>{entry[0]}</td><td>{entry[1]}</td></tr>);
 
-  // }
   getRows(){
     return this.state.data.map((entry) => <tr key={this.state.counter++}><td>{entry[0]}</td><td>{entry[1]}</td><td><a href={entry[2]}>Click here to download zip</a></td></tr>);
   }
+
+  componentDidMount(){
+    this._isMounted = true;
+    let info = {'username':this.props.match.params.userID.toString()};
+    fetch("http://127.0.0.1:5000/api/authorized",{method:'post',credentials: 'include', headers:{"Content-Type": "application/json"},body:JSON.stringify(info)})
+    .then(response => response.json())
+    .then(data => {
+
+      if(data.auth === 'rejected' && this._isMounted){
+       this.setState({authorized:false})
+       this.setState({tested:true})
+      }
+      if(data.auth === 'access' && this._isMounted){
+      this.setState({tested:true})
+      }
+    });
+  }
+  componentWillUnmount() {
+    this._isMounted = false;
+  }
+
+  signOut(){
+    fetch("http://127.0.0.1:5000/api/logout",{method:'post',credentials: 'include', headers:{"Content-Type": "application/json"}})
+    .then(response => response.json())
+    .then(data => {
+
+      if(data.status === 'success' && this._isMounted){
+        this.setState({authorized:false})
+      }
+      
+    });
+  }
+
   render(){
+    if(!this.state.tested){
+      return(<div></div>);
+    }
+    else if(!this.state.authorized && this.state.tested){
+      return <Redirect to='/'/>;
+    }else{
+
+   
   return (
     <div>
-      <CenterForm>
-       <h1>Hello: {this.props.match.params.userID.toString()}</h1>
-      </CenterForm>
-      <CenterForm>
-      <LogBtn style={{backgroundColor:this.state.disbaled?"#808080":"#CC5500"}} disabled={this.state.disbaled} onClick={(event) => this.getData()} type = "submit">Get data</LogBtn>
-      </CenterForm>
-      <CenterSpace>
-      {this.state.disbaled?<CircularProgress />:null}
-      </CenterSpace>
+      <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.props.match.params.userID.toString()}</h1><LogBtn style={{backgroundColor:"#ffffff",color:"#000000",marginLeft:'24px'}}  onClick={(event) => this.signOut()} type = "submit">Sign Out</LogBtn></NavMenu></Nav>
       <CenterSpace>
       <table>
       <tbody>
-      {this.state.data == null ? null:<tr><th>Name</th><th>Description</th><th>Download</th></tr>}
-      {this.state.data == null ? null:this.getRows()}
+      {this.state.data.length === 0 ? null:<tr><th>Name</th><th>Description</th><th>Download</th></tr>}
+      {this.state.data.length === 0  ? null:this.getRows()}
       </tbody>
       </table>
+      </CenterSpace>
+      <CenterSpace>
+      {this.state.spinner?<CircularProgress />:null}
+      </CenterSpace>
+      <CenterSpace>
+      <LogBtn style={{backgroundColor:this.state.disbaled?"#808080":"#CC5500"}} disabled={this.state.disbaled} onClick={(event) => this.getData()} type = "submit">Get data</LogBtn>
       </CenterSpace>
     </div>
   
     );
+   }
   }
 }
 
@@ -318,7 +372,7 @@ function SignIn() {
     
     let info = {'username':username,'password':password};
     console.log(JSON.stringify(info))
-    fetch("http://127.0.0.1:5000/api/signin",{method:'post',headers:{"Content-Type": "application/json"},body:JSON.stringify(info)}).then(response => response.json())
+    fetch("http://127.0.0.1:5000/api/signin",{method:'post',credentials: 'include',headers:{"Content-Type": "application/json","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Credentials":"true"},body:JSON.stringify(info)}).then(response => response.json())
     .then(data => {
       if(data.auth === 'pass'){
         setAuth(true);
@@ -362,7 +416,7 @@ function SignIn() {
         <LogBtn>Sign Up</LogBtn>
       </Link>
       </CenterForm>
-      {authenticated?<Redirect to='/'/>:null}
+      {authenticated?<Redirect to={'/project/'+username}/>:null}
     </div>
   );
 }
