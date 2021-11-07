@@ -1,0 +1,17 @@
+.nav-link:link,
+.nav-link:visited {
+  color: black;
+  background-color: white;
+  text-decoration: none;
+  display: inline-block;
+  padding: 8px 10px;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+.nav-link:active,
+.nav-link:hover {
+  background-color: wheat;
+}
+.tabletitle {
+  align-self: center;
+}
