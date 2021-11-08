@@ -55,37 +55,40 @@ export default function HwTable ({name, proid}){
             "Access-Control-Allow-Headers":"Content-Type",
             "Access-Control-Allow-Credentials":"true"
         }
-    }).then(res => res.json())
-    .then(data => {
-            updateData()
+        }).then(res => res.json())
+        .then(data => {
+            setError(data.error)
             setOut('')
-            if (data.error != ""){
-                setError(data.error)}
+            updateData()          
     })
     }
-    const submitCheckin=(hwname,hwid)=>{
-        fetch('http://127.0.0.1:5000/api/project/hardware/checkin',{
-        method:"POST",
-        body:JSON.stringify({
-            'name':name.toString(), 
-            "proid":proid.toString(),
-            "checkin":checkin,
-            "hwname":hwname,
-            "historyid":hwid
-        }),
-        headers:{
-            "Content-type":"application/json; charset=UTF-8",
-            "Access-Control-Allow-Headers":"Content-Type",
-            "Access-Control-Allow-Credentials":"true"
+    const submitCheckin=(hwname,hwid,remain)=>{
+        if(remain<checkin){
+            setError("wrong number: please check your input")
         }
-    }).then(res => res.json())
-    .then(data => {
-            updateData()
-            setCheckin('')
-            if (data.error != ""){
-                setError(data.error)}
-    })
-    }
+        else{
+            fetch('http://127.0.0.1:5000/api/project/hardware/checkin',{
+            method:"POST",
+            body:JSON.stringify({
+                'name':name.toString(), 
+                "proid":proid.toString(),
+                "checkin":checkin,
+                "hwname":hwname,
+                "historyid":hwid
+            }),
+            headers:{
+                "Content-type":"application/json; charset=UTF-8",
+                "Access-Control-Allow-Headers":"Content-Type",
+                "Access-Control-Allow-Credentials":"true"
+            }
+            }).then(res => res.json())
+            .then(data => {
+                setCheckin('')
+                setError(data.error)
+                updateData()
+        })
+        }
+}
 
     const submitAdd=()=>{
         fetch('http://127.0.0.1:5000/api/project/hardware/adduser',{
@@ -100,20 +103,48 @@ export default function HwTable ({name, proid}){
             "Access-Control-Allow-Headers":"Content-Type",
             "Access-Control-Allow-Credentials":"true"
         }
-    }).then(res => res.json())
-    .then(data => {
-            updateData()
+        }).then(res => res.json()).then(data => {
             setAdduser('')
-            if (data.error != ""){
-                setError(data.error)}
+            setError(data.error)
+            updateData()
     })
     }
+
+    const handleDelHis=(remain,id)=>{
+        if (remain !== 0){
+            setError('Cannot delete: check-in required')
+        }
+        else{
+            fetch('http://127.0.0.1:5000/api/project/hardware/history_delete',{
+            method:"POST",
+            body:JSON.stringify({
+                'name':name.toString(), 
+                "proid":proid.toString(),
+                "historyid":id
+            }),
+            headers:{
+                "Content-type":"application/json; charset=UTF-8",
+                "Access-Control-Allow-Headers":"Content-Type",
+                "Access-Control-Allow-Credentials":"true"
+            }
+            }).then(res => res.json())
+            .then(data => {
+                if(data.error==="None"){
+                    updateData()
+                    setError('')
+                }
+                else if (data.error !== ''){
+                    setError(data.error)}
+    })
+    }
+}
 
 
      return(
         <div>
           <div>
               <p>Current Project: ID({proid})</p>
+              <p style={{ color: 'red', textAlign:"center" }}>{error}</p>
           </div>
           <CenterSpace>
             <div>
@@ -146,10 +177,10 @@ export default function HwTable ({name, proid}){
                             <td>{hw.avail}</td>
                             <td>
                                 <div>
-                                <form onSubmit={()=>handleSubmit(hw.hwname)} >
+                                <form  >
                                     <input type="text" onChange={(event) => handleCheckout(event.target.value)} className="checkoutbox"></input><br/>
-                                    <input type="submit" className="submit" value="checkout"></input>
                                 </form>
+                                <button type="submit" className="submit" onClick={(event)=>handleSubmit(hw.hwname)}>checkout</button>
                                 </div>
                             </td>       
                      </tr>
@@ -183,10 +214,11 @@ export default function HwTable ({name, proid}){
                             <td>{his.remain}</td>
                             <td>
                                 <div>
-                                <form onSubmit={()=>submitCheckin(his.hwname,his.id)} >
-                                    <input type="text" onChange={(event) => handleCheckin(event.target.value)} className="checkinbox"></input><br/>
-                                    <input type="submit" className="submit" value="checkin"></input>
+                                <form >
+                                    <input type="text" onChange={(event) => handleCheckin(event.target.value)} className="checkinbox"/><br/>
                                 </form>
+                                <button type="submit" className="submit" onClick={(event)=>submitCheckin(his.hwname,his.id,his.remain)}>checkin</button>
+                                <button className="submitdel" onClick={(event)=>handleDelHis(his.remain,his.id)}>delete</button>
                                 </div>
                             </td>       
                      </tr>
@@ -196,9 +228,6 @@ export default function HwTable ({name, proid}){
                   </table>      
           </div>
           </CenterSpace>
-          <CenterForm>
-              {error?<p style={{ color: 'red' }}>{error}</p>:<p> </p>}
-          </CenterForm>
         </div>
       )
 }
