@@ -263,41 +263,53 @@ def project_table():
                 else:
                     projects_acc = []
         except:
-            error = "Unknown error: fail to add user"
+            error = "Unknown error"
 
         return jsonify([*map(project_serializer, projects)]+[*map(project_serializer, projects_acc)])
 
 
 @app.route('/api/project/add', methods=['POST', 'GET'])
 def project_create():
-    error = None
+    error = ''
     if request.method == 'POST':
         userid = encrypt(request.get_json().get('userid', None))
         pname = request.get_json().get('name', None)
-        pdescription = request.get_json().get('desc', None)
         pid = request.get_json().get('proid', None)
-        unvalid = dbModel.objects(project_id=pid)
-        if unvalid:
-            error = "unvalid projectID"
+        if pname == '':
+            error = "project name cannot be empty"
+            return{"error": error}
+        elif pid == '':
+            error = "Project ID cannot be empty"
             return{"error": error}
         else:
-            new_pro = dbModel(user_id=userid, project_name=pname,
-                              description=pdescription, project_id=pid)
-
-            try:
-                new_pro.save()
-                return{"error": "None"}
-            except:
-                error = 'Unknown error in creating new project'
+            pdescription = request.get_json().get('desc', None)
+            unvalid = dbModel.objects(project_id=pid)
+            if unvalid:
+                error = "unvalid projectID"
                 return{"error": error}
+            else:
+                new_pro = dbModel(user_id=userid, project_name=pname,
+                                  description=pdescription, project_id=pid)
+
+                try:
+                    new_pro.save()
+                    return{"error": "None"}
+                except:
+                    error = 'Unknown error in creating new project'
+                    return{"error": error}
 
 
 @ app.route('/api/project/delete', methods=['POST', 'GET'])
 def delete_project():
+    error = "None"
     if request.method == 'POST':
         userid = request.get_json().get('userid', None)
-        id = request.get_json().get('proid', None)
+        id = int(request.get_json().get('proid', None))
         pro_delete = dbModel.objects(project_id=id).first()
+        for history in pro_delete.checkout_history:
+            if history.hwRemain != 0:
+                error = "Can not delete: Check-in required for hardware"
+                return{"error": error}
         try:
             pro_delete.delete()
             return {"error": "None"}
@@ -361,10 +373,14 @@ def checkout_hardware():
                         new_avail = availability-checkout
 
                     else:
-                        new_avail = 0
-                        checkout = availability
-                        error = "Not enough resource! you have successfully checked in %d amount" % (
-                            checkout)
+                        if availability == 0:
+                            error = "Sorry, no available hardware"
+                            return {"error": error}
+                        else:
+                            new_avail = 0
+                            checkout = availability
+                            error = "Not enough resource, you have successfully checked in %d amount" % (
+                                checkout)
                     hw_requested.hw_availability = new_avail
                     hw_requested.save()
                     new_history = user_history(
@@ -372,6 +388,7 @@ def checkout_hardware():
                     for pro in project_this:
                         pro.checkout_history.append(new_history)
                         pro.save()
+                        return {"error": error}
         else:
             error = "unvalid input"
         return{"error": error}
@@ -393,7 +410,8 @@ def checkin_hardware():
                     availability = hw_check.hw_availability
                     after_avail = availability+checkin
                     if after_avail > hw_check.hw_capacity:
-                        error = "wrong number!"
+                        error = "wrong number: please check your input"
+                        return{"error": error}
                     else:
                         hw_check.hw_availability = after_avail
                         hw_check.save()
@@ -403,15 +421,35 @@ def checkin_hardware():
                                 if history.history_id == history_id:
                                     remain = history.hwRemain
                                     if remain-checkin < 0:
-                                        error = "wrong number!"
+                                        error = "wrong number: please check your input"
+                                        return {"error": error}
                                     else:
                                         history.hwRemain = remain-checkin
                                         pro.save()
 
                                     break
         else:
-            error = "unvalid input"
+            error = "wrong number: please check your input"
         return {"error": error}
+
+
+@ app.route('/api/project/hardware/history_delete', methods=["GET", "POST"])
+def history_delete():
+    if request.method == 'POST':
+        error = ''
+        userid = encrypt(request.get_json().get('name', None))
+        project_ID = request.get_json().get('proid', None)
+        project_this = dbModel.objects(project_id=project_ID).first()
+        history_id = request.get_json().get("historyid", None)
+        for history in project_this.checkout_history:
+            if history.history_id == history_id:
+                try:
+                    project_this.checkout_history.remove(history)
+                    project_this.save()
+                    return {"error": "None"}
+                except:
+                    return {"error": "Failed to delete: unknown error"}
+        return {"error": "Failed to delete: history not found"}
 
 
 @ app.route('/api/project/hardware/adduser', methods=["GET", "POST"])
