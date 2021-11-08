@@ -16,6 +16,7 @@ from markupsafe import escape
 from methods import encrypt
 from bs4 import BeautifulSoup
 import requests
+import uuid
 
 cors = flask_cors.CORS(supports_credentials = True)
  
@@ -32,6 +33,7 @@ database_name = "gettingStarted"
 
 db_url = "mongodb+srv://user_cloud:{}@cluster0.u0k5p.mongodb.net/{}?retryWrites=true&w=majority".format(
    '20153', database_name)
+
 db.connect(host=db_url, ssl_cert_reqs=ssl.CERT_NONE)
 
 
@@ -52,7 +54,7 @@ class user_history(EmbeddedDocument):
     hwName = StringField()
     hwAmount = IntField()
     hwRemain = IntField()
-    checkoutDate = DateTimeField(default=datetime.utcnow)
+    checkoutDate = DateTimeField(default=datetime.now())
 
 
 class dbModel (db.Document):
@@ -60,8 +62,13 @@ class dbModel (db.Document):
     project_name = db.StringField(required=True)
     description = db.StringField()
     project_id = db.IntField(nullable=False)
-    date_created = db.DateTimeField(default=datetime.utcnow)
+    date_created = db.DateTimeField(default=datetime.now())
     checkout_history = db.EmbeddedDocumentListField(user_history)
+
+class HW_info (db.Document):
+    hw_name = db.StringField(required=True)
+    hw_capacity = db.IntField()
+    hw_availability = db.IntField()
 
 cors.init_app(app)
 
@@ -79,10 +86,6 @@ def not_found(e):
 @cross_origin(supports_credentials=True)
 def user_login():
 
-    # if "user" in session:
-    #     user_url = "/%s/project" % (session["user"])
-    #     return redirect(user_url)
-
     error = None
     if request.method == 'POST':
         username = request.get_json().get('username',None)
@@ -94,7 +97,6 @@ def user_login():
                 if result.user_encryptpass == encrypt(password):
                     session["user"] = encry_name
                     session.permanent = True
-                    print(session)
                     session.modifies = True
                     return {'auth':'pass'}
                 else:
@@ -104,9 +106,88 @@ def user_login():
         return {'auth': error}
     return {'auth': "error"}
 
+def project_serializer(project):
+    return{
+        "user": project.user_id,
+        "proname": project.project_name,
+        "prodesc": project.description,
+        "proid": project.project_id,
+        "prodate": project.date_created
+    }
+
+@app.route('/api/project', methods=['POST', 'GET'])
+@cross_origin(supports_credentials=True)
+def project_table():
+    error = None
+    if request.method == 'POST':
+        userid = encrypt(request.get_json().get('name', None))
+        projects = dbModel.objects(user_id=userid).all()
+        try:
+            user_info = users.objects(user_encryptid=userid)
+            for user in user_info:
+                if user.user_access:
+                    for acc in user.user_access:
+                        proid = acc.acc_proid
+                        projects_acc = dbModel.objects(project_id=proid).all()
+                else:
+                    projects_acc = []
+        except:
+            error = "Unknown error"
+
+        return jsonify([*map(project_serializer, projects)]+[*map(project_serializer, projects_acc)])
+
+@app.route('/api/project/add', methods=['POST', 'GET'])
+def project_create():
+    error = ""
+    if request.method == 'POST':
+        userid = encrypt(request.get_json().get('userid', None))
+        pname = request.get_json().get('name', None)
+        pid = request.get_json().get('proid', None)
+        if pname == '':
+            error = "project name cannot be empty"
+            return{"error": error}
+        elif pid == '':
+            error = "Project ID cannot be empty"
+            return{"error": error}
+        else:
+            pdescription = request.get_json().get('desc', None)
+            unvalid = dbModel.objects(project_id=pid)
+            if unvalid:
+                error = "unvalid projectID"
+                return{"error": error}
+            else:
+                new_pro = dbModel(user_id=userid, project_name=pname,
+                                  description=pdescription, project_id=pid)
+
+                try:
+                    new_pro.save()
+                    return{"error": "None"}
+                except:
+                    error = 'Unknown error in creating new project'
+                    return{"error": error}
+
+
+@ app.route('/api/project/delete', methods=['POST', 'GET'])
+def delete_project():
+    error = "None"
+    if request.method == 'POST':
+        userid = request.get_json().get('userid', None)
+        id = int(request.get_json().get('proid', None))
+        pro_delete = dbModel.objects(project_id=id).first()
+        for history in pro_delete.checkout_history:
+            if history.hwRemain != 0:
+                error = "Can not delete: Check-in required for hardware"
+                return{"error": error}
+        try:
+            pro_delete.delete()
+            return {"error": "None"}
+        except:
+            return {"error": 'error in deleting'}
+
+
 
 @app.route('/api/signup',methods = ['GET','POST']) 
-
+@cross_origin(supports_credentials=True)
 def sign_up():
     error = None
     if request.method == 'POST':
@@ -114,17 +195,18 @@ def sign_up():
         email = request.get_json().get('email',None)
         invalidname = users.objects(user_encryptid=encrypt(name))
         invalidemail = users.objects(user_encryptemail=encrypt(email))
-        if invalidname:
-            error = "Error:Invalid username"
-        elif invalidemail:
-            error = "Error:Invalid email"
+        if invalidemail:
+            error = "Error: Email taken"
+        elif invalidname:
+            error = "Error: Username taken"
         else:
             password = request.get_json().get('password',None)
             new_user = users(user_encryptemail = encrypt(email),user_encryptid=encrypt(
                     name), user_encryptpass=encrypt(password))
             try:
                 new_user.save()
-                    #flash("New account has been created!", "info")
+                session["user"] = encrypt(name)
+                session.permanent = True
                 return {'auth': "done"}
             except:
                 return {'auth': "error"}
@@ -149,7 +231,6 @@ def get_data():
         
             
         if physionet == []:
-            print("GETTING VALUES")
             for li in ul.findAll('li'):
                 entry = []
                 lis.append(li)
@@ -165,7 +246,6 @@ def get_data():
         while len(data) < 5 and currentEntry < len(physionet)-2:
             newEntry = []
             source = requests.get(links[currentEntry]).text
-            print(currentEntry)
             soup = BeautifulSoup(source, 'lxml')
             zipFile = soup.find("a",string = "Download the ZIP file")
             if(zipFile != None):
@@ -175,23 +255,6 @@ def get_data():
                 currentEntry = currentEntry + 1
             else:
                 currentEntry = currentEntry + 1
-
-
-        # for l in links:
-        #     source = requests.get(l).text
-        #     soup = BeautifulSoup(source, 'lxml')
-        #     zipFile = soup.find("a",string = "Download the ZIP file")
-        #     if(zipFile != None):
-        #         data[counter].append('https://physionet.org/'+zipFile['href'])
-        #     else:
-        #         data[counter] = []
-        #     counter = counter + 1
-        #     currentEntry = currentEntry + 1
-        # dataList = [x for x in data if x != []]
-            
-
-        #print(links)
-        print(data)
         return jsonify(data)
 
     return {'val':""}
@@ -200,13 +263,11 @@ def get_data():
 @app.route('/api/authorized',methods = ['GET','POST']) 
 @cross_origin(supports_credentials=True)
 def get_authorized():
-    print(session)
     if "user" not in session:
         flash("Access denied: you need to log in first:")
         return {'auth':'rejected'}
     elif session["user"] != encrypt(request.get_json().get('username',None)):
         flash("Access denied: you're not allowed to proceed that website")
-        print("HERE2")
         return {'auth':'rejected'}
     else:
         return {'auth':'access'}
@@ -215,10 +276,174 @@ def get_authorized():
 @app.route('/api/logout',methods = ['GET','POST'])
 @cross_origin(supports_credentials=True)
 def log_out():
-    print(session)
     session.clear()
-    print(session)
     return {'status':"success"}
+
+def hardware_serializer(hw):
+    return{
+        "hwname": hw.hw_name,
+        "capacity": hw.hw_capacity,
+        "avail": hw.hw_availability
+    }
+
+
+def history_serializer(his):
+    return{
+        "id": his.history_id,
+        "hwname": his.hwName,
+        "amount": his.hwAmount,
+        "remain": his.hwRemain,
+        "date": his.checkoutDate
+    }
+
+
+@ app.route('/api/project/hardware', methods=["GET", "POST"])
+def show_hardware():
+    rHis = []
+    if request.method == 'POST':
+        error = ''
+        userid = encrypt(request.get_json().get('name', None))
+        projectID = request.get_json().get('proid', None)
+        project_ID = int(projectID)
+        project_this = dbModel.objects(project_id=project_ID)
+        for pro in project_this:
+            histories = pro.checkout_history
+        hw_informations = HW_info.objects().all()
+        for h in histories:
+            curHis = history_serializer(h)
+            if(curHis['remain'] != 0):
+                rHis.append(h)
+
+        return {
+            "info": [*map(hardware_serializer, hw_informations)],
+            "history": [*map(history_serializer, rHis)]
+        }
+
+
+@ app.route('/api/project/hardware/checkout', methods=["GET", "POST"])
+def checkout_hardware():
+    if request.method == 'POST':
+        error = ''
+        userid = encrypt(request.get_json().get('name', None))
+        projectID = request.get_json().get('proid', None)
+        project_ID = int(projectID)
+        project_this = dbModel.objects(project_id=project_ID)
+        checkout = 0
+        inputnumber = request.get_json().get('checkout', None)
+        if(inputnumber == ''):
+            error = "Invalid input"
+            return {"error": error}
+        checkout = int(inputnumber)
+        if checkout > 0:
+            name = request.get_json().get("hwname", None)
+            HW_requested = HW_info.objects(hw_name=name)
+            if HW_requested:
+                for hw_requested in HW_requested:
+                    availability = hw_requested.hw_availability
+                    if availability >= checkout:
+                        new_avail = availability-checkout
+
+                    else:
+                        if availability == 0:
+                            error = "Sorry, no available hardware"
+                            return {"error": error}
+                        else:
+                            new_avail = 0
+                            checkout = availability
+                            error = "Not enough resource, you have successfully checked in %d amount" % (
+                                checkout)
+                    hw_requested.hw_availability = new_avail
+                    hw_requested.save()
+                    new_history = user_history(
+                        hwName=name, hwAmount=checkout, hwRemain=checkout, history_id=uuid.uuid4().hex)
+                    for pro in project_this:
+                        pro.checkout_history.append(new_history)
+                        pro.save()
+                        return {"error": error}
+        else:
+            error = "unvalid input"
+        return{"error": error}
+
+
+@ app.route('/api/project/hardware/checkin', methods=["GET", "POST"])
+def checkin_hardware():
+    if request.method == 'POST':
+        error = ''
+        userid = encrypt(request.get_json().get('name', None))
+        project_ID = int(request.get_json().get('proid', None))
+        project_this = dbModel.objects(project_id=project_ID)
+        if(request.get_json().get("checkin", None) == ""):
+            error = "Invalid input"
+            return{"error": error}
+        checkin = int(request.get_json().get("checkin", None))
+        if checkin > 0:
+            hwname = request.get_json().get("hwname", None)
+            HW_check = HW_info.objects(hw_name=hwname)
+            if HW_check:
+                for hw_check in HW_check:
+                    availability = hw_check.hw_availability
+                    after_avail = availability+checkin
+                    if after_avail > hw_check.hw_capacity:
+                        error = "You are trying to check in too many items!"
+                        return{"error": error}
+                    else:
+                        hw_check.hw_availability = after_avail
+                        hw_check.save()
+                        history_id = request.get_json().get("historyid", None)
+                        for pro in project_this:
+                            for history in pro.checkout_history:
+                                if history.history_id == history_id:
+                                    remain = history.hwRemain
+                                    if remain-checkin < 0:
+                                        error = "wrong number: please check your input"
+                                        return {"error": error}
+                                    else:
+                                        history.hwRemain = remain-checkin
+                                        pro.save()
+
+                                    break
+        else:
+            error = "wrong number: please check your input"
+        return {"error": error}
+
+@ app.route('/api/project/hardware/history_delete', methods=["GET", "POST"])
+def history_delete():
+    if request.method == 'POST':
+        error = ''
+        userid = encrypt(request.get_json().get('name', None))
+        project_ID = request.get_json().get('proid', None)
+        project_this = dbModel.objects(project_id=project_ID).first()
+        history_id = request.get_json().get("historyid", None)
+        for history in project_this.checkout_history:
+            if history.history_id == history_id:
+                try:
+                    project_this.checkout_history.remove(history)
+                    project_this.save()
+                    return {"error": "None"}
+                except:
+                    return {"error": "Failed to delete: unknown error"}
+        return {"error": "Failed to delete: history not found"}
+
+
+@ app.route('/api/project/hardware/adduser', methods=["GET", "POST"])
+def project_adduser():
+    if request.method == 'POST':
+        error = ''
+        userid = encrypt(request.get_json().get('name', None))
+        project_ID = int(request.get_json().get('proid', None))
+        project_this = dbModel.objects(project_id=project_ID)
+        add_user = encrypt(request.get_json().get('usertoadd', None))
+        user_target = users.objects(user_encryptid=add_user)
+        if user_target:
+            for user in user_target:
+                new_acc = addAccess(acc_userid=userid,
+                                    acc_proid=project_ID)
+                user.user_access.append(new_acc)
+                user.save()
+                flash("user added")
+        else:
+            error = "invalid user name"
+    return {'error': error}
 
 if __name__ == '__main__':
  

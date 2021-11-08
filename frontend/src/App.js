@@ -18,6 +18,8 @@ import {
   CenterForm,
   CenterSpace,
   Nav,
+  VerticalNav,
+  TableSpace,
   NavMenu
 } from './components/Navbar/NavbarElements';
 import {
@@ -27,6 +29,9 @@ import {
   Route
 } from "react-router-dom";
 
+import { ShowProjects } from './projects';
+import { CreateProject } from './createProject';
+import HwTable from "./hardwareTable";
 
 //If signin is in the path, it will go to the sign in page
 //If signup is in the path, it will go to the sign up page
@@ -43,7 +48,8 @@ export default function App() {
           <Route path="/signup">
             <SignUp />
           </Route>
-          <Route path="/project/:userID"  component={Project}  />
+          <Route path="/project/:userID/:proID" component={Project} />
+          <Route path="/project/:userID" component={Project}  />
           <Route path="/">
             <Home />
           </Route>
@@ -65,6 +71,8 @@ class Project extends React.Component{
       authorized:true,
       spinner:false,
       index:0,
+      projects:true,
+      datasets:false,
       tested:false
     };
   }
@@ -128,6 +136,18 @@ class Project extends React.Component{
     });
   }
 
+  projectsClicked(){
+    this.setState({projects:true});
+    this.setState({datasets:false});
+    this.props.history.push('/project/'+ this.props.match.params.userID.toString())
+  }
+
+  datasetsClicked(){
+    this.setState({projects:false});
+    this.setState({datasets:true});
+    this.props.history.push('/project/'+ this.props.match.params.userID.toString())
+  }
+
   render(){
     if(!this.state.tested){
       return(<div></div>);
@@ -136,29 +156,193 @@ class Project extends React.Component{
       return <Redirect to='/'/>;
     }else{
 
-   
-  return (
-    <div>
-      <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.props.match.params.userID.toString()}</h1><LogBtn style={{backgroundColor:"#ffffff",color:"#000000",marginLeft:'24px'}}  onClick={(event) => this.signOut()} type = "submit">Sign Out</LogBtn></NavMenu></Nav>
-      <CenterSpace>
-      <table>
-      <tbody>
-      {this.state.data.length === 0 ? null:<tr><th>Name</th><th>Description</th><th>Download</th></tr>}
-      {this.state.data.length === 0  ? null:this.getRows()}
-      </tbody>
-      </table>
-      </CenterSpace>
-      <CenterSpace>
-      {this.state.spinner?<CircularProgress />:null}
-      </CenterSpace>
-      <CenterSpace>
-      <LogBtn style={{backgroundColor:this.state.disbaled?"#808080":"#CC5500"}} disabled={this.state.disbaled} onClick={(event) => this.getData()} type = "submit">Get data</LogBtn>
-      </CenterSpace>
-    </div>
-  
-    );
+      if(this.state.projects && this.props.match.params.proID === undefined){
+
+        return (
+          <div className="column">
+            
+            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.props.match.params.userID.toString()}</h1></NavMenu></Nav>
+            <div className = "row">
+            <VerticalNav>
+            <ul className = "ListStyle">
+             <li className = "block"><button className="items" href="" onClick={(event) => this.projectsClicked()}>Projects</button></li>
+             <li className = "block"><button className="items" href="" onClick={(event) => this.datasetsClicked()}>Datasets</button></li>
+             <li className = "block"><button className="items" href="" onClick={(event) => this.signOut()}>Logout</button></li>
+            </ul>
+            </VerticalNav>
+           <div style={{width:"100%"}}>
+              <h1 style={{textAlign:"center"}}>Your Projects</h1>
+              <ProTable info = {this.props.match.params.userID.toString()} />
+              </div>
+            </div>
+          </div>
+        
+          );
+
+      }else if(this.state.projects && this.props.match.params.proID !== undefined){
+
+        return (
+          <div className="column">
+            
+            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.props.match.params.userID.toString()}</h1></NavMenu></Nav>
+            <div className = "row">
+            <VerticalNav>
+            <ul className = "ListStyle">
+             <li className = "block"><button className="items" href="" onClick={(event) => this.projectsClicked()}>Projects</button></li>
+             <li className = "block"><button className="items" href="" onClick={(event) => this.datasetsClicked()}>Datasets</button></li>
+             <li className = "block"><button className="items" href="" onClick={(event) => this.signOut()}>Logout</button></li>
+            </ul>
+            </VerticalNav>
+           <div style={{width:"100%"}}>
+              <div><HwTable name={this.props.match.params.userID.toString()} proid={this.props.match.params.proID.toString()}/></div>
+              </div>
+            </div>
+          </div>
+        
+          );
+
+      }else if(this.state.datasets){
+
+        return (
+
+            <div className="column">
+            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.props.match.params.userID.toString()}</h1></NavMenu></Nav>
+              <div className = "row">
+                <VerticalNav>
+                <ul className = "ListStyle">
+                  <li className = "block"><button className="items" href="" onClick={(event) => this.projectsClicked()}>Projects</button></li>
+                  <li className = "block"><button className="items" href="" onClick={(event) => this.datasetsClicked()}>Datasets</button></li>
+                  <li className = "block"><button className="items" href="" onClick={(event) => this.signOut()}>Logout</button></li>
+                </ul>
+                </VerticalNav>
+                <div style={{width:"100%"}}>
+                <TableSpace>
+                  <table>
+                  <tbody>
+                    {this.state.data.length === 0 ? null:<tr><th>Name</th><th>Description</th><th>Download</th></tr>}
+                    {this.state.data.length === 0  ? null:this.getRows()}
+                  </tbody>
+                  </table>
+                </TableSpace>
+                <CenterSpace>
+                  {this.state.spinner?<CircularProgress />:null}
+                </CenterSpace>
+                <CenterSpace>
+                  <LogBtn style={{backgroundColor:this.state.disbaled?"#808080":"#CC5500"}} disabled={this.state.disbaled} onClick={(event) => this.getData()} type = "submit">Get data</LogBtn>
+                </CenterSpace>
+                </div>
+              </div>
+            </div>
+        
+          );
+
+
+      }
+
+
    }
   }
+}
+
+function ProTable({info}){
+  const [data, setData]=useState([{}])
+  const [error,setError] = useState('');
+  const [proname, setProname]=useState('')
+  const [prodesc, setProdesc]=useState('')
+  const [proid, setProid]=useState('')
+
+  React.useEffect(()=>{
+      fetch("http://127.0.0.1:5000/api/project",
+        {method:'post',credentials: 'include', headers:{"Content-Type": "application/json"},
+        body:JSON.stringify({'name':info.toString()})})
+      .then(response => response.json())
+      .then(data => {setData(data)
+            console.log(data)})
+  },[])
+  const updateData=()=>{
+    fetch("http://127.0.0.1:5000/api/project",
+        {method:'post',credentials: 'include', headers:{"Content-Type": "application/json"},
+        body:JSON.stringify({'name':info.toString()})})
+      .then(response => response.json())
+      .then(data => {setData(data)
+            console.log(data)})
+  }
+
+  const handleDelete=(user,proid)=>{
+      fetch('http://127.0.0.1:5000/api/project/delete',{
+          method:"POST",
+          body:JSON.stringify({
+              "userid":user,
+              "proid":proid,
+          }),
+          headers:{
+              "Content-type":"application/json; charset=UTF-8",
+              "Access-Control-Allow-Headers":"Content-Type",
+              "Access-Control-Allow-Credentials":"true"
+          }
+      }).then(res => res.json())
+      .then(data => {
+          if (data.error === 'None'){
+            updateData()
+          }
+          else{
+            setError(data.error)}
+      })
+  }
+const setName = (value) =>{
+    setProname(value)
+}
+const setDesc = (value) =>{
+    setProdesc(value)
+}
+const setId = (value) =>{
+    setProid(value)
+}
+  const handleSubmit=()=>{
+    fetch('http://127.0.0.1:5000/api/project/add',{
+    method:"POST",
+    body:JSON.stringify({
+        "userid":info.toString(),
+        "name":proname,
+        "desc":prodesc,
+        "proid":proid
+    }),
+    headers:{
+        "Content-type":"application/json; charset=UTF-8",
+        "Access-Control-Allow-Headers":"Content-Type",
+        "Access-Control-Allow-Credentials":"true"
+    }
+}).then(res => res.json())
+.then(data => {
+          if (data.error === 'None'){
+            updateData()
+            setProname('')
+            setProdesc('')
+            setProid('')
+          }
+          else{
+            setError(data.error)}
+   
+})
+}
+
+  return(
+    <div>
+      <div className="project_table">
+              <ShowProjects pros={data} name={info} onDelete={handleDelete}/>
+      </div>
+      <br/>
+      <div className="project_create">
+        <CenterForm>
+            <h1>Create a new project:</h1>
+            </CenterForm>
+            <CreateProject onSubmit={handleSubmit} setName={setName} setDesc={setDesc} setId={setId}/>
+      </div>
+      <CenterForm>
+          {error?<p style={{ color: 'red' }}>{error}</p>:<p> </p>}
+      </CenterForm>
+    </div>
+  )
 }
 
 
@@ -297,7 +481,7 @@ class SignUp extends React.Component{
 
   submitClicked(){
     let info = {'username':this.state.username,'password':this.state.password,'email':this.state.email};
-    fetch("http://127.0.0.1:5000/api/signup",{method:'post',headers:{"Content-Type": "application/json"},body:JSON.stringify(info)}).then(response => response.json()).then(data => {
+    fetch("http://127.0.0.1:5000/api/signup",{method:'post',credentials: 'include',headers:{"Content-Type": "application/json"},body:JSON.stringify(info)}).then(response => response.json()).then(data => {
       if(data.auth === 'done'){
         this.setState({authenticated:true});
       }else{
@@ -330,10 +514,10 @@ class SignUp extends React.Component{
           <TextField onChange = {(event) => this.setUsername(event.target.value)} id="outlined-basic" label="Username" variant="outlined" margin="normal" />
         </CenterForm>
         <CenterForm>
-          <TextField onChange = {(event) => this.setPassword(event.target.value)} id="outlined-basic" label="Password" variant="outlined" margin="normal" />
+          <TextField type="password" onChange = {(event) => this.setPassword(event.target.value)} id="outlined-basic" label="Password" variant="outlined" margin="normal" />
         </CenterForm>
         <CenterForm>
-          <TextField error={this.state.error} onChange = {(event) => this.checkPassword(event.target.value)} id="outlined-basic" label="Retype Password" variant="outlined" margin="normal" />
+          <TextField type="password" error={this.state.error} onChange = {(event) => this.checkPassword(event.target.value)} id="outlined-basic" label="Retype Password" variant="outlined" margin="normal" />
         </CenterForm>
         <CenterForm>
         {this.state.suError?<p style={{ color: 'red' }}>{this.state.eCode}</p>:<p> </p>}
@@ -351,7 +535,7 @@ class SignUp extends React.Component{
         <LogBtn>Sign In</LogBtn>
         </Link>
         </CenterForm>
-        {this.state.authenticated?<Redirect to='/'/>:null}
+        {this.state.authenticated?<Redirect to={'/project/'+this.state.username}/>:null}
       </div>
     );
 
@@ -396,7 +580,7 @@ function SignIn() {
         <TextField name="username" onChange = {(event) => setUsername(event.target.value)} id="outlined-basic" label="Username" variant="outlined" margin="normal" />
       </CenterForm>
       <CenterForm>
-        <TextField name="password" onChange = {(event) => setPassword(event.target.value)} id="outlined-basic" label="Password" variant="outlined" margin="normal" />
+        <TextField type="password" name="password" onChange = {(event) => setPassword(event.target.value)} id="outlined-basic" label="Password" variant="outlined" margin="normal" />
       </CenterForm>
       <CenterForm>
         {error?<p style={{ color: 'red' }}>{errorCode}</p>:<p> </p>}

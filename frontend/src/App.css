@@ -56,7 +56,7 @@
 table {
   font-family: arial, sans-serif;
   border-collapse: collapse;
-  width: 75%;
+  width: 85%;
 }
 
 td, th {
@@ -67,4 +67,57 @@ td, th {
 
 tr:nth-child(even) {
   background-color: #dddddd;
+}
+
+.ListStyle{
+  list-style-type: none;
+  padding: 0;
+}
+
+.block {
+  display: block
+}
+
+.items {
+  /* display: block; */
+  color: #000000;
+  width: 100%;
+  background-color: transparent;
+  border: none;
+  text-align: center;
+  padding: 20px;
+  font-size: large;
+  text-decoration: none;
+  font-family: "Arial";
+}
+
+.block button.items:hover {
+  background-color: #ffffff;
+
+ }
+
+ .noScroll{
+  -ms-overflow-style: none;
+}
+::-webkit-scrollbar {
+  display: none;
+}
+
+.column{
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+html, body, #app, #app>div {
+  height: 100%
+}
+body > #root > div {
+  height: 100vh;
+}
+.row{
+  flex-grow: 1;
+  display: flex;
+  flex-direction: row;
 }

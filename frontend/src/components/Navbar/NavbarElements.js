@@ -12,6 +12,17 @@ export const Nav = styled.nav`
   /* Third Nav */
   /* justify-content: flex-start; */
 `;
+
+//Vertical Nav bar 
+export const VerticalNav = styled.div`
+  background: #CC5500;
+  height: 100%;
+  width: 15%;
+  //display: inline-block;
+  //position: fixed;
+  z-index: 12;
+  
+`;
   
 //words in nav bar (TEAM SOFTWARE)
 export const NavLink = styled(Link)`
@@ -36,6 +47,14 @@ export const CenterSpace = styled.div`
 display: flex;
 justify-content: center;
 margin-top: 30px;
+`;
+
+export const TableSpace = styled.div`
+display: flex;
+justify-content: center;
+margin-top: 30px;
+z-index:12;
+
 `;
   
 //menu that contains all of the options in the nav bar
