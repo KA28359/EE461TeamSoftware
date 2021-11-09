@@ -17,6 +17,7 @@ def get_authorized():
         return {'auth': 'access'}
 
 
+
 @app.route('/api/project/authorized', methods=['GET', 'POST'])
 @cross_origin(supports_credentials=True)
 def get_authorized_with_pro():
@@ -26,9 +27,9 @@ def get_authorized_with_pro():
     else:
         this_user = session["user"]
         userid = encrypt(request.get_json().get('username', None))
+        project_ID = int(request.get_json().get('projectid', None))
         if this_user != userid:
             access = False
-            project_ID = int(request.get_json().get('projectid', None))
             check = users.objects(user_encryptid=this_user)
             for item in check:
                 for check_acc in item.user_access:
@@ -40,7 +41,12 @@ def get_authorized_with_pro():
                 return {'auth': 'rejected',
                         'username': decrypt(this_user)}
         else:
-            return {'auth': 'access'}
+            project_enter = dbModel.objects(project_id=project_ID).first()
+            if project_enter:
+                if project_enter.user_id == userid:
+                    return {'auth': 'access'}
+            return {'auth': 'rejected',
+                    'username': decrypt(this_user)}
 
 
 @ app.route('/api/project/hardware/adduser', methods=["GET", "POST"])
