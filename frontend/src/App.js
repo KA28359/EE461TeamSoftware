@@ -9,7 +9,7 @@ import SecurityIcon from '@material-ui/icons/Security';
 import CloudIcon from '@material-ui/icons/Cloud';
 import AddBoxIcon from '@material-ui/icons/AddBox';
 import StorageIcon from '@material-ui/icons/Storage';
-import { IconButton } from '@mui/material';
+import { IconButton, touchRippleClasses } from '@mui/material';
 import {Link} from 'react-router-dom';
 import './App.css';
 import { CircularProgress } from '@mui/material';
@@ -32,6 +32,7 @@ import {
 import { ShowProjects } from './projects';
 import { CreateProject } from './createProject';
 import HwTable from "./hardwareTable";
+import Hardware from "./hardware";
 
 //If signin is in the path, it will go to the sign in page
 //If signup is in the path, it will go to the sign up page
@@ -62,6 +63,7 @@ export default function App() {
 
 class Project extends React.Component{
   _isMounted = false;
+  refreased = false;
   constructor(props){
     super(props);
     this.state = {
@@ -73,7 +75,9 @@ class Project extends React.Component{
       index:0,
       projects:true,
       datasets:false,
-      tested:false
+      tested:false,
+      name:"",
+      username:''
     };
   }
 
@@ -104,19 +108,29 @@ class Project extends React.Component{
     return this.state.data.map((entry) => <tr key={this.state.counter++}><td>{entry[0]}</td><td>{entry[1]}</td><td><a href={entry[2]}>Click here to download zip</a></td></tr>);
   }
 
-  componentDidMount(){
-    this._isMounted = true;
+  refreshAuth=()=>{
+    if(!this.state.tested && !this.refreased){
+      this.refreased=true
+      this.componentDidMount()  
+  }}
+
+  componentDidMount=()=>{
+    // this._isMounted = true;
     let info = {'username':this.props.match.params.userID.toString()};
+    this.setState({name:this.props.match.params.userID.toString()})
     fetch("http://127.0.0.1:5000/api/authorized",{method:'post',credentials: 'include', headers:{"Content-Type": "application/json"},body:JSON.stringify(info)})
     .then(response => response.json())
     .then(data => {
-
+      this._isMounted=true
       if(data.auth === 'rejected' && this._isMounted){
-       this.setState({authorized:false})
-       this.setState({tested:true})
+       const path=(data.username===undefined)? '' : data.username
+       this.setState({username:path})
+       this.setState({authorized:false,tested:true})
+       this.refreased=false
+       
       }
       if(data.auth === 'access' && this._isMounted){
-      this.setState({tested:true})
+      this.setState({authorized:true,tested:true})
       }
     });
   }
@@ -136,24 +150,66 @@ class Project extends React.Component{
     });
   }
 
+  validateProjectAccess(){
+    let info = {'username':this.props.match.params.userID.toString(),
+                'projectid':this.props.match.params.proID.toString()};
+    fetch("http://127.0.0.1:5000/api/project/authorized",{method:'post',credentials: 'include', headers:{"Content-Type": "application/json"},body:JSON.stringify(info)})
+    .then(response => response.json())
+    .then(data => {
+      console.log(data)
+      this._isMounted=true
+      if(data.auth === 'rejected' && this._isMounted){
+       const path=(data.username===undefined)? '' : data.username
+       this.setState({username:path})
+       this.setState({authorized:false,tested:true})
+       this.refreased=false
+       
+      }
+      if(data.auth === 'access' && this._isMounted){
+      this.setState({authorized:true,tested:true})
+      }
+    });
+  }
+
   projectsClicked(){
     this.setState({projects:true});
     this.setState({datasets:false});
-    this.props.history.push('/project/'+ this.props.match.params.userID.toString())
+    this.props.history.push('/project/'+ this.state.name)
   }
 
   datasetsClicked(){
     this.setState({projects:false});
     this.setState({datasets:true});
-    this.props.history.push('/project/'+ this.props.match.params.userID.toString())
+    this.props.history.push('/project/'+ this.state.name)
   }
 
   render(){
     if(!this.state.tested){
-      return(<div></div>);
+      // this.refreshAuth()
+      return(
+        <div></div>
+      );
     }
     else if(!this.state.authorized && this.state.tested){
-      return <Redirect to='/'/>;
+      if(this.state.username !== ''){
+        return(
+        <div>
+            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: Invalid</h1></NavMenu></Nav>
+          <CenterSpace>
+            <div style={{ color: 'red', textAlign:"center"}} >
+            <p>Access denied:</p>
+            <p>if you're trying to use another account, you need to logout first</p>
+            </div>
+          </CenterSpace>
+          <CenterSpace>
+            <a href={'/project/'+this.state.username}>Go back</a>
+          </CenterSpace>
+        </div>
+      );
+      }
+      else{
+        return <Redirect to='/'/>
+      }
     }else{
 
       if(this.state.projects && this.props.match.params.proID === undefined){
@@ -161,7 +217,7 @@ class Project extends React.Component{
         return (
           <div className="column">
             
-            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.props.match.params.userID.toString()}</h1></NavMenu></Nav>
+            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.state.name}</h1></NavMenu></Nav>
             <div className = "row">
             <VerticalNav>
             <ul className = "ListStyle">
@@ -172,7 +228,7 @@ class Project extends React.Component{
             </VerticalNav>
            <div style={{width:"100%"}}>
               <h1 style={{textAlign:"center"}}>Your Projects</h1>
-              <ProTable info = {this.props.match.params.userID.toString()} />
+              <ProTable info = {this.state.name} />
               </div>
             </div>
           </div>
@@ -184,7 +240,7 @@ class Project extends React.Component{
         return (
           <div className="column">
             
-            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.props.match.params.userID.toString()}</h1></NavMenu></Nav>
+            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.state.name}</h1></NavMenu></Nav>
             <div className = "row">
             <VerticalNav>
             <ul className = "ListStyle">
@@ -194,19 +250,21 @@ class Project extends React.Component{
             </ul>
             </VerticalNav>
            <div style={{width:"100%"}}>
-              <div><HwTable name={this.props.match.params.userID.toString()} proid={this.props.match.params.proID.toString()}/></div>
+              {/* <div><HwTable name={this.props.match.params.userID.toString()} proid={this.props.match.params.proID.toString()}/></div> */}
+              <div><Hardware userID={this.props.match.params.userID} proID={this.props.match.params.proID}/></div>
+
               </div>
             </div>
           </div>
         
           );
-
+        
       }else if(this.state.datasets){
 
         return (
 
             <div className="column">
-            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.props.match.params.userID.toString()}</h1></NavMenu></Nav>
+            <Nav><NavMenu> <p style={{color:'#ffffff',fontSize:'2.5em'}}>TEAM SOFTWARE</p></NavMenu><NavMenu> <h1 style={{color:'#ffffff'}}>UserID: {this.state.name}</h1></NavMenu></Nav>
               <div className = "row">
                 <VerticalNav>
                 <ul className = "ListStyle">
@@ -228,7 +286,7 @@ class Project extends React.Component{
                   {this.state.spinner?<CircularProgress />:null}
                 </CenterSpace>
                 <CenterSpace>
-                  <LogBtn style={{backgroundColor:this.state.disbaled?"#808080":"#CC5500"}} disabled={this.state.disbaled} onClick={(event) => this.getData()} type = "submit">Get data</LogBtn>
+                  <LogBtn style={{backgroundColor:this.state.disbaled?"#808080":"#CC5500", marginBottom:'30px'}} disabled={this.state.disbaled} onClick={(event) => this.getData()} type = "submit">Get data</LogBtn>
                 </CenterSpace>
                 </div>
               </div>
@@ -257,7 +315,8 @@ function ProTable({info}){
         body:JSON.stringify({'name':info.toString()})})
       .then(response => response.json())
       .then(data => {setData(data)
-            console.log(data)})
+            console.log(data)
+          })
   },[])
   const updateData=()=>{
     fetch("http://127.0.0.1:5000/api/project",
@@ -265,7 +324,8 @@ function ProTable({info}){
         body:JSON.stringify({'name':info.toString()})})
       .then(response => response.json())
       .then(data => {setData(data)
-            console.log(data)})
+            console.log(data)
+          })
   }
 
   const handleDelete=(user,proid)=>{
@@ -319,6 +379,7 @@ const setId = (value) =>{
             setProname('')
             setProdesc('')
             setProid('')
+            setError('')
           }
           else{
             setError(data.error)}
@@ -434,7 +495,6 @@ class SignUp extends React.Component{
     password: "",
     retype:"",
     error:false,
-    blank:true,
     authenticated:false,
     suError:false,
     eCode:""
@@ -444,9 +504,6 @@ class SignUp extends React.Component{
   //TODO: disable signup button until all filled in
   setEmail(e){
     this.setState({email: e})
-    if(e !== "" && this.state.username !== "" && this.state.password !== "" && this.state.retype !== ""){
-      this.setState({blank:false});
-    }
   }
   setUsername(user){
     this.setState({username: user})
@@ -523,7 +580,7 @@ class SignUp extends React.Component{
         {this.state.suError?<p style={{ color: 'red' }}>{this.state.eCode}</p>:<p> </p>}
       </CenterForm>
         <CenterForm>
-          <LogBtn onClick={(event) => this.submitClicked()} type = "submit">Sign Up</LogBtn>
+          <LogBtn style={{backgroundColor:(this.state.error || this.state.retype === '' || this.state.password === '' || this.state.username === '' || this.state.email === '')?"#808080":"#CC5500"}}  disabled={(this.state.error || this.state.retype === '' || this.state.password === '' || this.state.username === '' || this.state.email === '')?true:false} onClick={(event) => this.submitClicked()} type = "submit">Sign Up</LogBtn>
         </CenterForm>
 
         <CenterForm>
@@ -586,7 +643,7 @@ function SignIn() {
         {error?<p style={{ color: 'red' }}>{errorCode}</p>:<p> </p>}
       </CenterForm>
       <CenterForm>
-      <LogBtn onClick={submitClicked} type = "submit">Sign In</LogBtn>
+      <LogBtn style={{backgroundColor:(username === '' || password === '')?"#808080":"#CC5500"}}  disabled={(username === '' || password === '')?true:false} onClick={submitClicked} type = "submit">Sign In</LogBtn>
       </CenterForm>
 
     

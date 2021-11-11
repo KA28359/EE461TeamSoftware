@@ -112,6 +112,7 @@ export default function HwTable ({name, proid}){
             setError(data.error)
             updateData()
     })
+    document.getElementById("add-user").value = "";
     }
 
     const handleDelHis=(remain,id)=>{
@@ -153,10 +154,10 @@ export default function HwTable ({name, proid}){
           <CenterSpace>
             <div>
                 <p>Add another user to this project:</p>
-                    <form onSubmit={()=>submitAdd}>
+                <form>
                             <input type="text" id="add-user" lable="username" onChange={(event) => handleAdduser(event.target.value)} />
-                            <input type="submit" value="add user" />
                     </form>
+                    <button type="submit" className="submit" onClick={(event)=>submitAdd()}>add user</button>
             </div>
           </CenterSpace>
             <CenterSpace>

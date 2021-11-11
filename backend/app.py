@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import ssl
 import os
 from markupsafe import escape
-from methods import encrypt
+from methods import encrypt, decrypt
 from bs4 import BeautifulSoup
 import requests
 import uuid
@@ -108,32 +108,41 @@ def user_login():
 
 def project_serializer(project):
     return{
-        "user": project.user_id,
+        "user": decrypt(project.user_id),
         "proname": project.project_name,
         "prodesc": project.description,
         "proid": project.project_id,
         "prodate": project.date_created
     }
 
+
 @app.route('/api/project', methods=['POST', 'GET'])
 @cross_origin(supports_credentials=True)
 def project_table():
-    error = None
     if request.method == 'POST':
         userid = encrypt(request.get_json().get('name', None))
         projects = dbModel.objects(user_id=userid).all()
+        projects_acc = []
         try:
             user_info = users.objects(user_encryptid=userid)
             for user in user_info:
                 if user.user_access:
                     for acc in user.user_access:
                         proid = acc.acc_proid
-                        projects_acc = dbModel.objects(project_id=proid).all()
-                else:
-                    projects_acc = []
+                        nameid = acc.acc_userid
+                        project_acc = dbModel.objects(
+                            project_id=proid).first()
+                        if project_acc:
+                            if project_acc.user_id != nameid:
+                                user.user_access.remove(acc)
+                                user.save()
+                            else:
+                                projects_acc.append(project_acc)
+                        else:
+                            user.user_access.remove(acc)
+                            user.save()
         except:
-            error = "Unknown error"
-
+            flash("no other access added to this user")
         return jsonify([*map(project_serializer, projects)]+[*map(project_serializer, projects_acc)])
 
 @app.route('/api/project/add', methods=['POST', 'GET'])
@@ -260,17 +269,49 @@ def get_data():
     return {'val':""}
 
 
-@app.route('/api/authorized',methods = ['GET','POST']) 
+@app.route('/api/authorized', methods=['GET', 'POST'])
 @cross_origin(supports_credentials=True)
 def get_authorized():
     if "user" not in session:
         flash("Access denied: you need to log in first:")
-        return {'auth':'rejected'}
-    elif session["user"] != encrypt(request.get_json().get('username',None)):
+        return {'auth': 'rejected'}
+    elif session["user"] != encrypt(request.get_json().get('username', None)):
         flash("Access denied: you're not allowed to proceed that website")
-        return {'auth':'rejected'}
+        info = session["user"]
+        return {'auth': 'rejected',
+                'username': decrypt(info)}
     else:
-        return {'auth':'access'}
+        return {'auth': 'access'}
+
+@app.route('/api/project/authorized', methods=['GET', 'POST'])
+@cross_origin(supports_credentials=True)
+def get_authorized_with_pro():
+    if "user" not in session:
+        flash("Access denied: you need to log in first:")
+        return {'auth': 'rejected'}
+    else:
+        this_user = session["user"]
+        userid = encrypt(request.get_json().get('username', None))
+        project_ID = int(request.get_json().get('projectid', None))
+        if this_user != userid:
+            access = False
+            check = users.objects(user_encryptid=this_user)
+            for item in check:
+                for check_acc in item.user_access:
+                    if check_acc.acc_userid == userid and check_acc.acc_proid == project_ID:
+                        access = True
+                        return {'auth': 'access'}
+            if not access:
+                flash("Access denied: you're not allowed to proceed that website")
+                return {'auth': 'rejected',
+                        'username': decrypt(this_user)}
+        else:
+            project_enter = dbModel.objects(project_id=project_ID).first()
+            if project_enter:
+                if project_enter.user_id == userid:
+                    return {'auth': 'access'}
+            return {'auth': 'rejected',
+                    'username': decrypt(this_user)}
 
 
 @app.route('/api/logout',methods = ['GET','POST'])
@@ -429,21 +470,26 @@ def history_delete():
 def project_adduser():
     if request.method == 'POST':
         error = ''
+        if request.get_json().get('usertoadd', None) == '':
+            return {'error': 'invalid user name'}
         userid = encrypt(request.get_json().get('name', None))
         project_ID = int(request.get_json().get('proid', None))
-        project_this = dbModel.objects(project_id=project_ID)
+        # project_this = dbModel.objects(project_id=project_ID)
         add_user = encrypt(request.get_json().get('usertoadd', None))
-        user_target = users.objects(user_encryptid=add_user)
-        if user_target:
-            for user in user_target:
+        user = users.objects(user_encryptid=add_user).first()
+        if user:
+            try:
                 new_acc = addAccess(acc_userid=userid,
                                     acc_proid=project_ID)
                 user.user_access.append(new_acc)
                 user.save()
-                flash("user added")
+                error = ("user added")
+                return {'error': error}
+            except:
+                return{'error': 'failed: unknown error'}
         else:
             error = "invalid user name"
-    return {'error': error}
+            return {'error': error}
 
 if __name__ == '__main__':
  

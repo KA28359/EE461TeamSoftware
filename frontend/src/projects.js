@@ -32,7 +32,7 @@ const handleDelete = (pro) => {
                             <td>{pro.prodate}</td>
                             <td>
                                 <Button onClick={()=>handleDelete(pro)}>Delete</Button>
-                                <Link to={"/project/"+name+"/"+pro.proid}>Enter</Link>
+                                <Link to={"/project/"+pro.user+"/"+pro.proid}>Enter</Link>
                             </td>
                         </tr>
                     ))
