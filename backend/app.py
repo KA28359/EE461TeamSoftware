@@ -5,7 +5,7 @@ from flask_session import Session
 from flask.helpers import url_for
 from flask_mongoengine import MongoEngine
 from mongoengine.document import EmbeddedDocument
-from mongoengine.fields import DateField, DateTimeField, EmbeddedDocumentField, IntField, StringField
+from mongoengine.fields import ComplexDateTimeField, DateTimeField, EmbeddedDocumentField, IntField, StringField
 import mongoengine as db
 from pymongo import MongoClient
 from const import mymongo_password
@@ -17,6 +17,7 @@ from methods import encrypt, decrypt
 from bs4 import BeautifulSoup
 import requests
 import uuid
+import pytz
 
 cors = flask_cors.CORS(supports_credentials = True)
  
@@ -36,6 +37,7 @@ db_url = "mongodb+srv://user_cloud:{}@cluster0.u0k5p.mongodb.net/{}?retryWrites=
 
 db.connect(host=db_url, ssl_cert_reqs=ssl.CERT_NONE)
 
+time_local = datetime.now(tz=pytz.timezone('US/Central'))
 
 class addAccess(EmbeddedDocument):
     acc_userid = StringField()
@@ -54,15 +56,14 @@ class user_history(EmbeddedDocument):
     hwName = StringField()
     hwAmount = IntField()
     hwRemain = IntField()
-    checkoutDate = DateTimeField(default=datetime.now())
-
+    checkoutDate = ComplexDateTimeField(default=time_local)
 
 class dbModel (db.Document):
     user_id = db.StringField(reqired=True)
     project_name = db.StringField(required=True)
     description = db.StringField()
     project_id = db.IntField(nullable=False)
-    date_created = db.DateTimeField(default=datetime.now())
+    date_created = db.ComplexDateTimeField(default=time_local)
     checkout_history = db.EmbeddedDocumentListField(user_history)
 
 class HW_info (db.Document):
