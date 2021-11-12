@@ -5,7 +5,7 @@ from flask_session import Session
 from flask.helpers import url_for
 from flask_mongoengine import MongoEngine
 from mongoengine.document import EmbeddedDocument
-from mongoengine.fields import DateField, DateTimeField, EmbeddedDocumentField, IntField, StringField
+from mongoengine.fields import ComplexDateTimeField, DateField, DateTimeField, EmbeddedDocumentField, IntField, StringField
 import mongoengine as db
 from pymongo import MongoClient
 from const import mymongo_password
@@ -17,6 +17,7 @@ from methods import encrypt, decrypt
 from bs4 import BeautifulSoup
 import requests
 import uuid
+import pytz
 
 cors = flask_cors.CORS(supports_credentials = True)
  
@@ -36,6 +37,7 @@ db_url = "mongodb+srv://user_cloud:{}@cluster0.u0k5p.mongodb.net/{}?retryWrites=
 
 db.connect(host=db_url, ssl_cert_reqs=ssl.CERT_NONE)
 
+time_local = datetime.now(tz=pytz.timezone('US/Central'))
 
 class addAccess(EmbeddedDocument):
     acc_userid = StringField()
@@ -54,7 +56,7 @@ class user_history(EmbeddedDocument):
     hwName = StringField()
     hwAmount = IntField()
     hwRemain = IntField()
-    checkoutDate = DateTimeField(default=datetime.now())
+    checkoutDate = ComplexDateTimeField()
 
 
 class dbModel (db.Document):
@@ -62,7 +64,7 @@ class dbModel (db.Document):
     project_name = db.StringField(required=True)
     description = db.StringField()
     project_id = db.IntField(nullable=False)
-    date_created = db.DateTimeField(default=datetime.now())
+    date_created = db.ComplexDateTimeField(default=time_local)
     checkout_history = db.EmbeddedDocumentListField(user_history)
 
 class HW_info (db.Document):
@@ -149,6 +151,7 @@ def project_table():
 def project_create():
     error = ""
     if request.method == 'POST':
+        time_local2 = datetime.now()
         userid = encrypt(request.get_json().get('userid', None))
         pname = request.get_json().get('name', None)
         pid = request.get_json().get('proid', None)
@@ -166,7 +169,7 @@ def project_create():
                 return{"error": error}
             else:
                 new_pro = dbModel(user_id=userid, project_name=pname,
-                                  description=pdescription, project_id=pid)
+                                  description=pdescription, project_id=pid, date_created = time_local2)
 
                 try:
                     new_pro.save()
@@ -340,7 +343,7 @@ def history_serializer(his):
 
 @ app.route('/api/project/hardware', methods=["GET", "POST"])
 def show_hardware():
-    rHis = []
+    # rHis = []
     if request.method == 'POST':
         error = ''
         userid = encrypt(request.get_json().get('name', None))
@@ -350,20 +353,21 @@ def show_hardware():
         for pro in project_this:
             histories = pro.checkout_history
         hw_informations = HW_info.objects().all()
-        for h in histories:
-            curHis = history_serializer(h)
-            if(curHis['remain'] != 0):
-                rHis.append(h)
+        # for h in histories:
+        #     curHis = history_serializer(h)
+        #     if(curHis['remain'] != 0):
+        #         rHis.append(h)
 
         return {
             "info": [*map(hardware_serializer, hw_informations)],
-            "history": [*map(history_serializer, rHis)]
+            "history": [*map(history_serializer, histories)]
         }
 
 
 @ app.route('/api/project/hardware/checkout', methods=["GET", "POST"])
 def checkout_hardware():
     if request.method == 'POST':
+        time_local2 = datetime.now()
         error = ''
         userid = encrypt(request.get_json().get('name', None))
         projectID = request.get_json().get('proid', None)
@@ -396,8 +400,9 @@ def checkout_hardware():
                     hw_requested.hw_availability = new_avail
                     hw_requested.save()
                     new_history = user_history(
-                        hwName=name, hwAmount=checkout, hwRemain=checkout, history_id=uuid.uuid4().hex)
+                        hwName=name, hwAmount=checkout, hwRemain=checkout, history_id=uuid.uuid4().hex, checkoutDate=time_local2 )
                     for pro in project_this:
+                        print(new_history.checkoutDate)
                         pro.checkout_history.append(new_history)
                         pro.save()
                         return {"error": error}

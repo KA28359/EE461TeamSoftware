@@ -1,7 +1,7 @@
 import React, { useState,useEffect } from 'react';
 import {CenterSpace } from './components/Navbar/NavbarElements';
 import './resource.css'
-
+import moment from "moment-timezone"
 export default function HwTable ({name, proid}){
     const [info, setInfo]=useState([{}])
     const [history, setHistory]=useState([{}])
@@ -215,7 +215,8 @@ export default function HwTable ({name, proid}){
                      <tr className="histories_line" key={i}>
                             <td>{his.hwname}</td>
                             <td>{his.amount}</td>
-                            <td>{his.date}</td>
+                            {/* <td>{his.date}</td> */}
+                            <td>{moment(his.date).format('DD/MM/YYYY HH:mm')}</td>
                             <td>{his.remain}</td>
                             <td>
                                 <div>

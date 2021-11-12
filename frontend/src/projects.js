@@ -2,6 +2,7 @@ import { Button } from '@mui/material';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CenterSpace } from './components/Navbar/NavbarElements';
+import moment from "moment-timezone"
 
 export const ShowProjects =({pros,name,onDelete})=>{
     
@@ -29,7 +30,8 @@ const handleDelete = (pro) => {
                             <td>{pro.proname}</td>
                             <td>{pro.prodesc}</td>
                             <td>{pro.proid}</td>
-                            <td>{pro.prodate}</td>
+                            {/* <td>{pro.prodate.slice(0, 26)}</td> */}
+                            <td>{moment(pro.prodate).format('DD/MM/YYYY HH:mm')}</td>
                             <td>
                                 <Button onClick={()=>handleDelete(pro)}>Delete</Button>
                                 <Link to={"/project/"+pro.user+"/"+pro.proid}>Enter</Link>
